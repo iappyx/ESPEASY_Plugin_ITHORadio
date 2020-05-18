@@ -3,6 +3,8 @@ Alternate version for the ESPEasy ITHO plugin (https://github.com/svollebregt/ES
 
 A CC1101 868Mhz transmitter is needed. The 433Mhz version also seems to work (range may be limited).
 
+| This is a proof of concept and not a final version yet. It is not stable yet. Use at your own risk |
+
 For more info see: https://gathering.tweakers.net/forum/list_messages/1690945
 
 U can use the same set-up and a similar configuration as for the original plugin (source: https://github.com/svollebregt/ESPEASY_Plugin_ITHO):
