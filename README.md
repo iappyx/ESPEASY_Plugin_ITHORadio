@@ -14,6 +14,9 @@ Below will be customizable in the next version of the plugin.
 
 1) Update 'uint8_t _remoteIdRoom[3] = {0x0, 0x0, 0x9};' with your own ID in ithosender.h. See below how to get your remote ID.
 2) Update line #135 - #170 of _P145_Itho.ino with the right commands. You can get the commands in a similar way as you get the remote ID (it is part of the serial monitor or log output when you press a button on your original remotes).
+3) Enable "[DEBUG] Enable RF receive loop" in the device settings via ESP EASY if you want to receive and process status updates from you original remotes. This is still buggy. If not enabled only sending commands to the fan will work.
+4) The plugin might reboot the device - if you're trying to do a firmware upgrade OTA, please disable the plugin beforehand.
+
 
 ## Set-up and configuration
 You can use the same set-up and a similar configuration as for the original plugin (source: https://github.com/svollebregt/ESPEASY_Plugin_ITHO):
