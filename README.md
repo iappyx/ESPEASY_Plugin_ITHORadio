@@ -3,9 +3,15 @@ Alternate version for the ESPEasy ITHO plugin (https://github.com/svollebregt/ES
 
 A CC1101 868Mhz transmitter is needed. The 433Mhz version also seems to work (range may be limited).
 
-| This is a proof of concept and not a final version yet. It is not stable yet. Use at your own risk |
-
 For more info see: https://gathering.tweakers.net/forum/list_messages/1690945
+
+
+# This is a proof of concept and not a final version yet. It is not stable yet. Use at your own risk
+
+Temporary configuration items (will be customizable in the plugin, in the next version)
+Update 'uint8_t _remoteIdRoom[3] = {0x0, 0x0, 0x9};' with your own ID in ithosender.h.
+See below how to get your remote ID
+
 
 U can use the same set-up and a similar configuration as for the original plugin (source: https://github.com/svollebregt/ESPEASY_Plugin_ITHO):
 
@@ -67,8 +73,10 @@ These commands are not (yet) implemented.
 
 33 -Itho to high speed with hardware timer (30 min)
 
+### Get your remote IDs
 In the plugin you are able to define 3 RF device ID's for the existing RF remote controls the plugin is listening to, to update the state of the fan.
-You are able to capture the id of you RF remote, by setting the log settings to 3, in the advanced settings menu. After pressing a button, you will see the ID (8 chars) of the RF in the log. Use ID with ':'. 
+
+You are able to capture the id of you RF remote, by setting the log settings to 3, in the advanced settings menu. After pressing a button, you will see the ID (8 chars) of the RF in the log. Use ID with ':'. You can also use serial monitor for this.
 #### example ID: xx:xx:xx
 
 As in the original plugin, in case a timerfunction is called (timer 1..3), an internal timer is running as estimate for the elapsed time.
