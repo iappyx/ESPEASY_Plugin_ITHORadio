@@ -22,7 +22,7 @@ class IthoReceiveClass
   void logger(void (*)(const String &));
 
   private:
-	uint8_t _irqPin = D2;
+	uint8_t _irqPin = 5;
 	bool _gotIthoStart;
 	uint8_t _lastIndex;
 	size_t _oldSize = 0;

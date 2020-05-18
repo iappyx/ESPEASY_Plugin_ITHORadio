@@ -5,7 +5,7 @@
 #include "IthoDecode.h"
 #include "IthoCommand.h"
 
-#define ITHO_IRQ_PIN D2
+#define ITHO_IRQ_PIN D1
 #define LARGE_BUFFER_LEN 2052
 #define LARGE_DATA_LEN CC1101_BUFFER_LEN - 3
 uint8_t rfData[LARGE_BUFFER_LEN];
@@ -40,7 +40,7 @@ String IthoReceiveClass::toString(uint8_t *data, unsigned int length, bool ashex
     return str;
 }
 
-void ITHOinterrupt()
+ICACHE_RAM_ATTR void ITHOinterrupt()
 {
     size_t rb = IthoCC1101.receiveDataRaw(rfData + rfDataWriteIdx, LARGE_BUFFER_LEN - rfDataWriteIdx);
     rfDataWriteIdx += rb;
