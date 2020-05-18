@@ -1,4 +1,4 @@
-# ESPEASY_Plugin_ITHO_ITHORadio
+# ESPEASY_Plugin_ITHORadio
 Alternate version for the ESPEasy ITHO plugin (https://github.com/svollebregt/ESPEASY_Plugin_ITHO) working with a slightly modified version of the ITHORadio library from https://github.com/philipsen/IthoRadio. This library is originally based on the library from: https://github.com/supersjimmie/IthoEcoFanRFT/tree/master/Master/Itho made by 'supersjimmie' and 'klusjesman'.
 
 A CC1101 868Mhz transmitter is needed. The 433Mhz version also seems to work (range may be limited).
