@@ -6,14 +6,14 @@ A CC1101 868Mhz transmitter is needed. The 433Mhz version also seems to work (ra
 For more info see: https://gathering.tweakers.net/forum/list_messages/1690945
 
 
-# This is a proof of concept and not a final version yet. It is not stable yet. Use at your own risk
+# This is a proof of concept and not a final version yet. It is not stable yet and requires some manual configuration. Use at your own risk
 
 ## Temporary configuration items
 
 Below will be customizable in the next version of the plugin.
 
-Update 'uint8_t _remoteIdRoom[3] = {0x0, 0x0, 0x9};' with your own ID in ithosender.h.
-See below how to get your remote ID
+1) Update 'uint8_t _remoteIdRoom[3] = {0x0, 0x0, 0x9};' with your own ID in ithosender.h. See below how to get your remote ID.
+2) Update line #135 - #170 of _P145_Itho.ino with the right commands. You can get the commands in a similar way as you get the remote ID (it is part of the serial monitor or log output when you press a button on your original remotes).
 
 ## Set-up and configuration
 You can use the same set-up and a similar configuration as for the original plugin (source: https://github.com/svollebregt/ESPEASY_Plugin_ITHO):
