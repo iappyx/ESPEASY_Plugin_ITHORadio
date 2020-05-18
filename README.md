@@ -16,7 +16,7 @@ Update 'uint8_t _remoteIdRoom[3] = {0x0, 0x0, 0x9};' with your own ID in ithosen
 See below how to get your remote ID
 
 ## Set-up and configuration
-U can use the same set-up and a similar configuration as for the original plugin (source: https://github.com/svollebregt/ESPEASY_Plugin_ITHO):
+You can use the same set-up and a similar configuration as for the original plugin (source: https://github.com/svollebregt/ESPEASY_Plugin_ITHO):
 
 |CC11xx pin    |ESP pins|Description                                        |
 |:-------------|:-------|:--------------------------------------------------|
