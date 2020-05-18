@@ -8,7 +8,8 @@ For more info see: https://gathering.tweakers.net/forum/list_messages/1690945
 
 # This is a proof of concept and not a final version yet. It is not stable yet. Use at your own risk
 
-Temporary configuration items (will be customizable in the plugin, in the next version)
+##Temporary configuration items (will be customizable in the plugin, in the next version)
+
 Update 'uint8_t _remoteIdRoom[3] = {0x0, 0x0, 0x9};' with your own ID in ithosender.h.
 See below how to get your remote ID
 
