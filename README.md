@@ -55,13 +55,13 @@ Not recommended pins for intterupt:
 ## Not implemented commands:
 These commands are not (yet) implemented.
 
-4 - set Itho ventilation unit to full speed
+4 - set Itho ventilation unit to full speed - setting this will now result in setting status 3
 
-1111 to join ESP8266 with Itho ventilation unit
+1111 to join ESP8266 with Itho ventilation unit - not necessary, assumption is that you pair your own physical remote
 
-9999 to leaveESP8266 with Itho ventilation unit
+9999 to leaveESP8266 with Itho ventilation unit - not necessary, assumption is that you pair your own physical remote
 
-0 - set Itho ventilation unit to standby
+0 - set Itho ventilation unit to standby - need to find out what the command is
 
 ## List of States:
 
