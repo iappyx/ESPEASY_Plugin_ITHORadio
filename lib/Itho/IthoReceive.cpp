@@ -5,7 +5,7 @@
 #include "IthoDecode.h"
 #include "IthoCommand.h"
 
-#define ITHO_IRQ_PIN D1
+//#define ITHO_IRQ_PIN D1
 #define LARGE_BUFFER_LEN 2052
 #define LARGE_DATA_LEN CC1101_BUFFER_LEN - 3
 uint8_t rfData[LARGE_BUFFER_LEN];
@@ -48,7 +48,7 @@ ICACHE_RAM_ATTR void ITHOinterrupt()
 
 void IthoReceiveClass::setup()
 {
-    pinMode(ITHO_IRQ_PIN, INPUT);
+    pinMode(_irqPin, INPUT);
     attachIter();
 
     IthoCC1101.initReceive();
@@ -57,12 +57,12 @@ void IthoReceiveClass::setup()
 
 void IthoReceiveClass::attachIter()
 {
-    attachInterrupt(ITHO_IRQ_PIN, ITHOinterrupt, RISING);
+    attachInterrupt(_irqPin, ITHOinterrupt, RISING);
 }
 
 void IthoReceiveClass::detachIter()
 {
-    detachInterrupt(ITHO_IRQ_PIN);
+    detachInterrupt(_irqPin);
 }
 
 void IthoReceiveClass::resetBuffer()
@@ -109,7 +109,7 @@ void IthoReceiveClass::loop()
                 {
                     //Serial.println("");
                     String s = toString(rfData, i + 3, true);
-                    Serial.println(s);
+                    //Serial.println(s);
                     _log(s);
                 }
                 bool isIthoRemote = true;
@@ -130,11 +130,13 @@ void IthoReceiveClass::loop()
                     {
                         if (printOtherRemote)
                         {
-                            Serial.printf("remote: ");
+                            //Serial.printf("remote: ");
                             //String dc = IthoDecode::decode(rfData, i);
                             //Serial.println(IthoDecode::toPrintString(dc));
                             IthoCommand cmd(s);
-                            Serial.println(cmd.toString());
+                            //Serial.println(cmd.toString());
+                            _log(String("remote: "));
+                            _log(cmd.toString());
                             _log(String("remote/") + IthoDecode::toPrintString(s));
                             _log(String("send/remote/") + cmd.id().toString() + "/" + cmd.command().toString());
                         }
@@ -143,11 +145,10 @@ void IthoReceiveClass::loop()
                     {
                         if (printNonRemote)
                         {
-                            String ss = String("non: ") + IthoDecode::toPrintString(s);
-                            Serial.printf("other (crc=%d): ", crc);
-                            Serial.println(ss);
-                            //_log("got non remote");
-                            _log(ss);
+                            //String ss = String("non: ") + IthoDecode::toPrintString(s);
+                            //printf("other (crc=%d): ", crc);
+                            _log(String("non: ") + IthoDecode::toPrintString(s));
+                            _log(String(printf("other (crc=%d): ", crc)));
                         }
                     }
                 }
@@ -158,19 +159,20 @@ void IthoReceiveClass::loop()
         }
         _oldSize = rfDataWriteIdx;
     }
+    yield();
 }
 
-void IthoReceiveClass::logger(void (*callback) (const String&))
+void IthoReceiveClass::logger(void (*callback)(const String &))
 {
     _logger = callback;
 }
 
 void IthoReceiveClass::_log(const String &s)
 {
-    if (_logger != NULL) {
+    if (_logger != NULL)
+    {
         _logger(s);
     }
 }
-
 
 IthoReceiveClass IthoReceive;
