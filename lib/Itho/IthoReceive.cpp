@@ -152,14 +152,16 @@ void IthoReceiveClass::loop()
                         }
                     }
                 }
-
                 resetBuffer();
+                //yield();
+                delay(0);
                 return;
             }
         }
         _oldSize = rfDataWriteIdx;
     }
-    yield();
+    //yield();
+    delay(0);
 }
 
 void IthoReceiveClass::logger(void (*callback)(const String &))
