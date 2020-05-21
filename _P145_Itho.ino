@@ -70,17 +70,39 @@ struct PLUGIN_145_ExtraSettingsStruct
 	char ID3[24];
 } PLUGIN_145_ExtraSettings;
 
-int PLUGIN_145_State = 1; // after startup it is assumed that the fan is running low
-int PLUGIN_145_OldState = 1;
-int PLUGIN_145_Timer = 0;
-int PLUGIN_145_LastIDindex = 0;
-int PLUGIN_145_OldLastIDindex = 0;
+static IthoReceiveClass *PLUGIN_145_IthoReceiver = NULL;
+static IthoSenderClass *PLUGIN_145_IthoSender = NULL;
 
-//long PLUGIN_145_LastPublish=0; SV - not used for anything?
-int8_t Plugin_145_IRQ_pin = -1;
-bool PLUGIN_145_InitRunned = false;
-bool PLUGIN_145_Log = false;
-bool PLUGIN_145_Loop = false;
+class CPLUGIN_145_Data
+{
+public:
+	int State;
+	int Oldstate;
+	int Timer;
+	int LastIDindex;
+	int OldLastIDindex;
+
+	int8_t IRQ_pin;
+	bool InitRunned;
+	bool Log;
+	bool Loop;
+
+	void PLUGIN_145_DataHolder()
+	{
+		State = 1; // after startup it is assumed that the fan is running low
+		Oldstate = 1;
+		Timer = 0;
+		LastIDindex = 0;
+		OldLastIDindex = 0;
+
+		IRQ_pin = -1;
+		InitRunned = false;
+		Log = false;
+		Loop = false;
+	}
+};
+
+static CPLUGIN_145_Data *PLUGIN_145_Data = NULL;
 
 #define PLUGIN_145
 #define PLUGIN_ID_145 145
@@ -88,117 +110,13 @@ bool PLUGIN_145_Loop = false;
 #define PLUGIN_VALUENAME1_145 "State"
 #define PLUGIN_VALUENAME2_145 "Timer"
 #define PLUGIN_VALUENAME3_145 "LastIDindex"
+//#define PLUGIN_145_DEBUG true
 
 // Timer values for hardware timer in Fan
 #define PLUGIN_145_Time1 10 * 60
 #define PLUGIN_145_Time2 20 * 60
 #define PLUGIN_145_Time3 30 * 60
 
-inline String sub(const String &s, char separator, int cnt)
-{
-	int startIndex = 0;
-	for (int i = 0; i < cnt; i++)
-	{
-		startIndex = s.indexOf(separator, startIndex);
-		if (startIndex < 0)
-			return "";
-		startIndex++;
-	}
-	int lastIndex = s.indexOf(separator, startIndex);
-	if (lastIndex < 0)
-	{
-		return s.substring(startIndex);
-	}
-	return s.substring(startIndex, lastIndex);
-}
-
-void logger(const String &m)
-{
-	Serial.println(m);
-
-	if (PLUGIN_145_Log)
-	{
-		addLog(LOG_LEVEL_INFO, String(m));
-	}
-
-	if (m.startsWith("send/remote/"))
-	{
-
-		const String &receivedRemote = sub(m, '/', 2);
-		const String &receivedCommand = sub(m, '/', 3);
-
-		if (PLUGIN_145_Log)
-		{
-			addLog(LOG_LEVEL_INFO, String("Copy this command --> " + receivedCommand));
-			addLog(LOG_LEVEL_INFO, String("Copy this remote  --> " + receivedRemote));
-		}
-
-		if (PLUGIN_145_RFRemoteIndex(receivedRemote) > 0)
-		{
-
-			String receivedCommandName = "";
-
-			if (receivedCommand.equalsIgnoreCase(F("22:f1:3:63:2:4")))
-			{
-				receivedCommandName = F("low");
-				PLUGIN_145_State = 1;
-				PLUGIN_145_Timer = 0;
-				PLUGIN_145_LastIDindex = PLUGIN_145_RFRemoteIndex(receivedRemote);
-			}
-			else if (receivedCommand.equalsIgnoreCase(F("22:f1:3:63:4:4")))
-			{
-				receivedCommandName = F("high");
-				PLUGIN_145_State = 3;
-				PLUGIN_145_Timer = 0;
-				PLUGIN_145_LastIDindex = PLUGIN_145_RFRemoteIndex(receivedRemote);
-			}
-			else if (receivedCommand.equalsIgnoreCase(F("22:f1:3:63:3:4")))
-			{
-				receivedCommandName = F("auto1");
-				PLUGIN_145_State = 2;
-				PLUGIN_145_Timer = 0;
-				PLUGIN_145_LastIDindex = PLUGIN_145_RFRemoteIndex(receivedRemote);
-			}
-			else if (receivedCommand.equalsIgnoreCase(F("22:f8:3:63:2:3")))
-			{
-				//receivedCommandName=F("auto2");
-				//not implemented
-				receivedCommandName = F("unknown");
-			}
-			else if (receivedCommand.equalsIgnoreCase(F("22:f3:3:63:0:a")))
-			{
-				receivedCommandName = F("timer1");
-				PLUGIN_145_State = 13;
-				PLUGIN_145_Timer = PLUGIN_145_Time1;
-				PLUGIN_145_LastIDindex = PLUGIN_145_RFRemoteIndex(receivedRemote);
-			}
-			else if (receivedCommand.equalsIgnoreCase(F("22:f3:3:63:0:14")))
-			{
-				receivedCommandName = F("timer2");
-				PLUGIN_145_State = 23;
-				PLUGIN_145_Timer = PLUGIN_145_Time2;
-				PLUGIN_145_LastIDindex = PLUGIN_145_RFRemoteIndex(receivedRemote);
-			}
-			else if (receivedCommand.equalsIgnoreCase(F("22:f3:3:63:0:1e")))
-			{
-				receivedCommandName = F("timer3");
-				PLUGIN_145_State = 33;
-				PLUGIN_145_Timer = PLUGIN_145_Time3;
-				PLUGIN_145_LastIDindex = PLUGIN_145_RFRemoteIndex(receivedRemote);
-			}
-			else
-			{
-				receivedCommandName = F("unknown");
-			}
-
-			if (PLUGIN_145_Log)
-			{
-				addLog(LOG_LEVEL_INFO, String("Found remote #" + String(PLUGIN_145_RFRemoteIndex(receivedRemote)) + " " + receivedCommandName + " (" + receivedCommand + ")"));
-				Serial.println(String("Found remote #" + String(PLUGIN_145_RFRemoteIndex(receivedRemote)) + " with command: " + receivedCommandName + " (" + receivedCommand + ")"));
-			}
-		}
-	}
-}
 
 boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 {
@@ -219,7 +137,9 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 		Device[deviceCount].ValueCount = 3;
 		Device[deviceCount].SendDataOption = true;
 		Device[deviceCount].TimerOption = true;
+		Device[deviceCount].TimerOptional = true;
 		Device[deviceCount].GlobalSyncOption = true;
+        Device[deviceCount].DecimalsOnly = true;
 		break;
 	}
 
@@ -239,39 +159,44 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 
 	case PLUGIN_INIT:
 	{
+
+		if (PLUGIN_145_Data==NULL) Serial.println("PLUGIN_INIT TEST");
+
+		if (!PLUGIN_145_Data) {
+			PLUGIN_145_Data = new CPLUGIN_145_Data();
+		}
+
+		if (!PLUGIN_145_IthoReceiver)
+			PLUGIN_145_IthoReceiver = new IthoReceiveClass();
+
+		if (!PLUGIN_145_IthoSender)
+			PLUGIN_145_IthoSender = new IthoSenderClass();
+
 		//If configured interrupt pin differs from configured, release old pin first
-		if ((Settings.TaskDevicePin1[event->TaskIndex] != Plugin_145_IRQ_pin) && (Plugin_145_IRQ_pin != -1))
+		if ((Settings.TaskDevicePin1[event->TaskIndex] != PLUGIN_145_Data->IRQ_pin) && (PLUGIN_145_Data->IRQ_pin != -1))
 		{
-			if (PLUGIN_145_Log)
+			if (PLUGIN_145_Data->Log)
 			{
-				addLog(LOG_LEVEL_DEBUG, F("IO-PIN changed, detach interrupt old pin"));
+				addLog(LOG_LEVEL_INFO, F("IO-PIN changed, detach interrupt old pin"));
 			}
 
-			detachInterrupt(Plugin_145_IRQ_pin);
+			detachInterrupt(PLUGIN_145_Data->IRQ_pin);
 		}
 		LoadCustomTaskSettings(event->TaskIndex, (byte *)&PLUGIN_145_ExtraSettings, sizeof(PLUGIN_145_ExtraSettings));
 
-		if (PLUGIN_145_Log)
-		{
-			addLog(LOG_LEVEL_INFO, F("Extra Settings PLUGIN_145 loaded"));
-		}
+		addLog(LOG_LEVEL_INFO, F("Extra Settings PLUGIN_145 loaded"));
 
-		Plugin_145_IRQ_pin = Settings.TaskDevicePin1[event->TaskIndex];
+		PLUGIN_145_Data->IRQ_pin = Settings.TaskDevicePin1[event->TaskIndex];
 
-		IthoReceive.setInterruptPin(Plugin_145_IRQ_pin);
-		IthoReceive.printAllPacket = true;
-		IthoReceive.printNonRemote = true;
+		PLUGIN_145_IthoReceiver->printAllPacket = true;
+		PLUGIN_145_IthoReceiver->printNonRemote = true;
 
-		IthoReceive.logger(logger);
-		IthoSender.logger(logger);
-		IthoReceive.setup();
+		PLUGIN_145_IthoReceiver->setInterruptPin(PLUGIN_145_Data->IRQ_pin);
+		PLUGIN_145_IthoReceiver->logger(PLUGIN_145_logger);
+		PLUGIN_145_IthoSender->logger(PLUGIN_145_logger);
+		PLUGIN_145_IthoReceiver->setup();
 
-		if (PLUGIN_145_Log)
-		{
-			addLog(LOG_LEVEL_INFO, F("CC1101 868Mhz transmitter initialized"));
-		}
-
-		PLUGIN_145_InitRunned = true;
+		PLUGIN_145_Data->InitRunned = true;
 
 		success = true;
 		break;
@@ -281,7 +206,7 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 	{
 		addLog(LOG_LEVEL_INFO, F("EXIT PLUGIN_145"));
 		//remove interupt when plugin is removed
-		detachInterrupt(Plugin_145_IRQ_pin);
+		//detachInterrupt(PLUGIN_145_Data->IRQ_pin);
 		success = true;
 		break;
 	}
@@ -289,39 +214,39 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 	case PLUGIN_ONCE_A_SECOND:
 	{
 
+		if (PLUGIN_145_Data==NULL) Serial.println("ONCE A SEC TEST");
+
 		//decrement timer when timermode is running
-		if (PLUGIN_145_State >= 10)
-			PLUGIN_145_Timer--;
+		if (PLUGIN_145_Data->State >= 10)
+			PLUGIN_145_Data->Timer--;
 
 		//if timer  has elapsed set Fan state to low
-		if ((PLUGIN_145_State >= 10) && (PLUGIN_145_Timer <= 0))
+		if ((PLUGIN_145_Data->State >= 10) && (PLUGIN_145_Data->Timer <= 0))
 		{
-			PLUGIN_145_State = 1;
-			PLUGIN_145_Timer = 0;
+			PLUGIN_145_Data->State = 1;
+			PLUGIN_145_Data->Timer = 0;
 		}
 
 		//Publish new data when vars are changed or init has runned or timer is running (update every 2 sec)
 		if (
 
-			(PLUGIN_145_OldState != PLUGIN_145_State) ||
-			((PLUGIN_145_Timer > 0) && (PLUGIN_145_Timer % 2 == 0)) ||
-			(PLUGIN_145_OldLastIDindex != PLUGIN_145_LastIDindex) ||
-			PLUGIN_145_InitRunned)
+			(PLUGIN_145_Data->Oldstate != PLUGIN_145_Data->State) || ((PLUGIN_145_Data->Timer > 0) && (PLUGIN_145_Data->Timer % 2 == 0)) || (PLUGIN_145_Data->OldLastIDindex != PLUGIN_145_Data->LastIDindex) || PLUGIN_145_Data->InitRunned)
 		{
-			if (PLUGIN_145_Log)
+			if (PLUGIN_145_Data->Log)
 			{
-				addLog(LOG_LEVEL_DEBUG, F("UPDATE by PLUGIN_ONCE_A_SECOND"));
+				addLog(LOG_LEVEL_INFO, F("UPDATE by PLUGIN_ONCE_A_SECOND"));
 			}
 
 			PLUGIN_145_Publishdata(event);
+
 			sendData(event);
 			//reset flag set by init
-			PLUGIN_145_InitRunned = false;
+			PLUGIN_145_Data->InitRunned = false;
 		}
 
 		//Remember current state for next cycle
-		PLUGIN_145_OldState = PLUGIN_145_State;
-		PLUGIN_145_OldLastIDindex = PLUGIN_145_LastIDindex;
+		PLUGIN_145_Data->Oldstate = PLUGIN_145_Data->State;
+		PLUGIN_145_Data->OldLastIDindex = PLUGIN_145_Data->LastIDindex;
 
 		success = true;
 		break;
@@ -329,17 +254,29 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 
 	case PLUGIN_TEN_PER_SECOND:
 	{
-		if (PLUGIN_145_Loop)
+
+		//if (!PLUGIN_145_Data)
+		//	break;
+
+		if (PLUGIN_145_Data->Loop)
 		{
-			IthoReceive.loop();
-			yield();
+			PLUGIN_145_IthoReceiver->loop();
+			//yield();
+			delay(0);
 		}
+		success = true;
+		break;
 	}
 
 	case PLUGIN_READ:
 	{
 		// This ensures that even when Values are not changing, data is send at the configured interval for aquisition
-		if (PLUGIN_145_Log)
+
+		//if (!PLUGIN_145_Data)
+		//	break;
+		if (PLUGIN_145_Data==NULL) Serial.println("PLUGIN READ TEST");
+
+		if (PLUGIN_145_Data->Log)
 		{
 			addLog(LOG_LEVEL_DEBUG, F("UPDATE by PLUGIN_READ"));
 		}
@@ -350,6 +287,11 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 
 	case PLUGIN_WRITE:
 	{
+		//if (!PLUGIN_145_Data)
+		//	break;
+
+		if (PLUGIN_145_Data==NULL) Serial.println("PLUGIN WRITE TEST");
+
 		String tmpString = string;
 		String cmd = parseString(tmpString, 1);
 		String param1 = parseString(tmpString, 2);
@@ -360,7 +302,7 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 			if (param1.equalsIgnoreCase(F("1111")))
 			{
 
-				if (PLUGIN_145_Log)
+				if (PLUGIN_145_Data->Log)
 				{
 					addLog(LOG_LEVEL_INFO, F("Commands 'standby', 'leave' and 'join' are not implemented in this build."));
 				}
@@ -371,7 +313,7 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 			if (param1.equalsIgnoreCase(F("9999")))
 			{
 
-				if (PLUGIN_145_Log)
+				if (PLUGIN_145_Data->Log)
 				{
 					addLog(LOG_LEVEL_INFO, F("Commands 'standby', 'leave' and 'join' are not implemented in this build."));
 				}
@@ -382,11 +324,11 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 			if (param1.equalsIgnoreCase(F("0")))
 			{
 
-				PLUGIN_145_State = 0;
-				PLUGIN_145_Timer = 0;
-				PLUGIN_145_LastIDindex = 0;
+				PLUGIN_145_Data->State = 0;
+				PLUGIN_145_Data->Timer = 0;
+				PLUGIN_145_Data->LastIDindex = 0;
 
-				if (PLUGIN_145_Log)
+				if (PLUGIN_145_Data->Log)
 				{
 					addLog(LOG_LEVEL_INFO, F("Commands 'standby', 'leave' and 'join' are not implemented in this build."));
 				}
@@ -396,13 +338,13 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 			}
 			if (param1.equalsIgnoreCase(F("1")))
 			{
-				IthoSender.sendCommandRoom("low");
+				PLUGIN_145_IthoSender->sendCommandRoom("low");
 
-				PLUGIN_145_State = 1;
-				PLUGIN_145_Timer = 0;
-				PLUGIN_145_LastIDindex = 0;
+				PLUGIN_145_Data->State = 1;
+				PLUGIN_145_Data->Timer = 0;
+				PLUGIN_145_Data->LastIDindex = 0;
 
-				if (PLUGIN_145_Log)
+				if (PLUGIN_145_Data->Log)
 				{
 					addLog(LOG_LEVEL_INFO, F("Sent command for 'low speed' to Itho unit"));
 				}
@@ -412,13 +354,13 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 			}
 			if (param1.equalsIgnoreCase(F("2")))
 			{
-				IthoSender.sendCommandRoom("auto1");
+				PLUGIN_145_IthoSender->sendCommandRoom("auto1");
 
-				PLUGIN_145_State = 2;
-				PLUGIN_145_Timer = 0;
-				PLUGIN_145_LastIDindex = 0;
+				PLUGIN_145_Data->State = 2;
+				PLUGIN_145_Data->Timer = 0;
+				PLUGIN_145_Data->LastIDindex = 0;
 
-				if (PLUGIN_145_Log)
+				if (PLUGIN_145_Data->Log)
 				{
 					addLog(LOG_LEVEL_INFO, F("Sent command for 'auto 1 speed' to Itho unit"));
 				}
@@ -428,13 +370,13 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 			}
 			if (param1.equalsIgnoreCase(F("3")))
 			{
-				IthoSender.sendCommandRoom("high");
+				PLUGIN_145_IthoSender->sendCommandRoom("high");
 
-				PLUGIN_145_State = 3;
-				PLUGIN_145_Timer = 0;
-				PLUGIN_145_LastIDindex = 0;
+				PLUGIN_145_Data->State = 3;
+				PLUGIN_145_Data->Timer = 0;
+				PLUGIN_145_Data->LastIDindex = 0;
 
-				if (PLUGIN_145_Log)
+				if (PLUGIN_145_Data->Log)
 				{
 					addLog(LOG_LEVEL_INFO, F("Sent command for 'high speed' to Itho unit"));
 				}
@@ -445,13 +387,13 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 			}
 			if (param1.equalsIgnoreCase(F("4")))
 			{
-				IthoSender.sendCommandRoom("high");
+				PLUGIN_145_IthoSender->sendCommandRoom("high");
 
-				PLUGIN_145_State = 4;
-				PLUGIN_145_Timer = 0;
-				PLUGIN_145_LastIDindex = 0;
+				PLUGIN_145_Data->State = 4;
+				PLUGIN_145_Data->Timer = 0;
+				PLUGIN_145_Data->LastIDindex = 0;
 
-				if (PLUGIN_145_Log)
+				if (PLUGIN_145_Data->Log)
 				{
 					addLog(LOG_LEVEL_INFO, F("Sent command for 'full speed' to Itho unit"));
 				}
@@ -461,13 +403,13 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 			}
 			if (param1.equalsIgnoreCase(F("13")))
 			{
-				IthoSender.sendCommandRoom("timer1");
+				PLUGIN_145_IthoSender->sendCommandRoom("timer1");
 
-				PLUGIN_145_State = 13;
-				PLUGIN_145_Timer = PLUGIN_145_Time1;
-				PLUGIN_145_LastIDindex = 0;
+				PLUGIN_145_Data->State = 13;
+				PLUGIN_145_Data->Timer = PLUGIN_145_Time1;
+				PLUGIN_145_Data->LastIDindex = 0;
 
-				if (PLUGIN_145_Log)
+				if (PLUGIN_145_Data->Log)
 				{
 					addLog(LOG_LEVEL_INFO, F("Sent command for 'timer 1' to Itho unit"));
 				}
@@ -476,13 +418,13 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 			}
 			if (param1.equalsIgnoreCase(F("23")))
 			{
-				IthoSender.sendCommandRoom("timer2");
+				PLUGIN_145_IthoSender->sendCommandRoom("timer2");
 
-				PLUGIN_145_State = 23;
-				PLUGIN_145_Timer = PLUGIN_145_Time2;
-				PLUGIN_145_LastIDindex = 0;
+				PLUGIN_145_Data->State = 23;
+				PLUGIN_145_Data->Timer = PLUGIN_145_Time2;
+				PLUGIN_145_Data->LastIDindex = 0;
 
-				if (PLUGIN_145_Log)
+				if (PLUGIN_145_Data->Log)
 				{
 					addLog(LOG_LEVEL_INFO, F("Sent command for 'timer 2' to Itho unit"));
 				}
@@ -491,13 +433,13 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 			}
 			if (param1.equalsIgnoreCase(F("33")))
 			{
-				IthoSender.sendCommandRoom("timer3");
+				PLUGIN_145_IthoSender->sendCommandRoom("timer3");
 
-				PLUGIN_145_State = 33;
-				PLUGIN_145_Timer = PLUGIN_145_Time3;
-				PLUGIN_145_LastIDindex = 0;
+				PLUGIN_145_Data->State = 33;
+				PLUGIN_145_Data->Timer = PLUGIN_145_Time3;
+				PLUGIN_145_Data->LastIDindex = 0;
 
-				if (PLUGIN_145_Log)
+				if (PLUGIN_145_Data->Log)
 				{
 					addLog(LOG_LEVEL_INFO, F("Sent command for 'timer 3' to Itho unit"));
 				}
@@ -532,10 +474,10 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 		SaveCustomTaskSettings(event->TaskIndex, (byte *)&PLUGIN_145_ExtraSettings, sizeof(PLUGIN_145_ExtraSettings));
 
 		PCONFIG(0) = isFormItemChecked(F("p145_log"));
-		PLUGIN_145_Log = PCONFIG(0);
+		PLUGIN_145_Data->Log = PCONFIG(0);
 
 		PCONFIG(1) = isFormItemChecked(F("p145_loop"));
-		PLUGIN_145_Loop = PCONFIG(1);
+		PLUGIN_145_Data->Loop = PCONFIG(1);
 
 		success = true;
 		break;
@@ -544,11 +486,116 @@ boolean Plugin_145(byte function, struct EventStruct *event, String &string)
 	return success;
 }
 
+inline String PLUGIN_145_sub(const String &s, char separator, int cnt)
+{
+	int startIndex = 0;
+	for (int i = 0; i < cnt; i++)
+	{
+		startIndex = s.indexOf(separator, startIndex);
+		if (startIndex < 0)
+			return "";
+		startIndex++;
+	}
+	int lastIndex = s.indexOf(separator, startIndex);
+	if (lastIndex < 0)
+	{
+		return s.substring(startIndex);
+	}
+	return s.substring(startIndex, lastIndex);
+}
+
+void PLUGIN_145_logger(const String &m)
+{
+	if (PLUGIN_145_Data->Log)
+	{
+		//Serial.print(m);
+		addLog(LOG_LEVEL_INFO, String(m));
+	}
+
+	if (m.startsWith("send/remote/"))
+	{
+
+		const String &receivedRemote = PLUGIN_145_sub(m, '/', 2);
+		const String &receivedCommand = PLUGIN_145_sub(m, '/', 3);
+
+		if (PLUGIN_145_Data->Log)
+		{
+			addLog(LOG_LEVEL_INFO, String("Copy this command --> " + receivedCommand));
+			addLog(LOG_LEVEL_INFO, String("Copy this remote  --> " + receivedRemote));
+		}
+
+		if (PLUGIN_145_RFRemoteIndex(receivedRemote) > 0)
+		{
+
+			String receivedCommandName = "";
+
+			if (receivedCommand.equalsIgnoreCase(F("22:f1:3:63:2:4")))
+			{
+				receivedCommandName = F("low");
+				PLUGIN_145_Data->State = 1;
+				PLUGIN_145_Data->Timer = 0;
+				PLUGIN_145_Data->LastIDindex = PLUGIN_145_RFRemoteIndex(receivedRemote);
+			}
+			else if (receivedCommand.equalsIgnoreCase(F("22:f1:3:63:4:4")))
+			{
+				receivedCommandName = F("high");
+				PLUGIN_145_Data->State = 3;
+				PLUGIN_145_Data->Timer = 0;
+				PLUGIN_145_Data->LastIDindex = PLUGIN_145_RFRemoteIndex(receivedRemote);
+			}
+			else if (receivedCommand.equalsIgnoreCase(F("22:f1:3:63:3:4")))
+			{
+				receivedCommandName = F("auto1");
+				PLUGIN_145_Data->State = 2;
+				PLUGIN_145_Data->Timer = 0;
+				PLUGIN_145_Data->LastIDindex = PLUGIN_145_RFRemoteIndex(receivedRemote);
+			}
+			else if (receivedCommand.equalsIgnoreCase(F("22:f8:3:63:2:3")))
+			{
+				//receivedCommandName=F("auto2");
+				//not implemented
+				receivedCommandName = F("unknown");
+			}
+			else if (receivedCommand.equalsIgnoreCase(F("22:f3:3:63:0:a")))
+			{
+				receivedCommandName = F("timer1");
+				PLUGIN_145_Data->State = 13;
+				PLUGIN_145_Data->Timer = PLUGIN_145_Time1;
+				PLUGIN_145_Data->LastIDindex = PLUGIN_145_RFRemoteIndex(receivedRemote);
+			}
+			else if (receivedCommand.equalsIgnoreCase(F("22:f3:3:63:0:14")))
+			{
+				receivedCommandName = F("timer2");
+				PLUGIN_145_Data->State = 23;
+				PLUGIN_145_Data->Timer = PLUGIN_145_Time2;
+				PLUGIN_145_Data->LastIDindex = PLUGIN_145_RFRemoteIndex(receivedRemote);
+			}
+			else if (receivedCommand.equalsIgnoreCase(F("22:f3:3:63:0:1e")))
+			{
+				receivedCommandName = F("timer3");
+				PLUGIN_145_Data->State = 33;
+				PLUGIN_145_Data->Timer = PLUGIN_145_Time3;
+				PLUGIN_145_Data->LastIDindex = PLUGIN_145_RFRemoteIndex(receivedRemote);
+			}
+			else
+			{
+				receivedCommandName = F("unknown");
+			}
+
+			if (PLUGIN_145_Data->Log)
+			{
+				addLog(LOG_LEVEL_INFO, String("Found remote #" + String(PLUGIN_145_RFRemoteIndex(receivedRemote)) + " " + receivedCommandName + " (" + receivedCommand + ")"));
+				Serial.println(String("Found remote #" + String(PLUGIN_145_RFRemoteIndex(receivedRemote)) + " with command: " + receivedCommandName + " (" + receivedCommand + ")"));
+			}
+		}
+	}
+}
+
 void PLUGIN_145_Publishdata(struct EventStruct *event)
 {
-	UserVar[event->BaseVarIndex] = PLUGIN_145_State;
-	UserVar[event->BaseVarIndex + 1] = PLUGIN_145_Timer;
-	UserVar[event->BaseVarIndex + 2] = PLUGIN_145_LastIDindex;
+	UserVar[event->BaseVarIndex] = PLUGIN_145_Data->State;
+	UserVar[event->BaseVarIndex + 1] = PLUGIN_145_Data->Timer;
+	UserVar[event->BaseVarIndex + 2] = PLUGIN_145_Data->LastIDindex;
 
 	String log = F("State: ");
 	log += UserVar[event->BaseVarIndex];
