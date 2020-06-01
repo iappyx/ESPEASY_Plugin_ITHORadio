@@ -1,12 +1,12 @@
+# This was a proof of concept and not a final version yet. It is not stable yet and requires some manual configuration. It will not be maintained. See: https://github.com/iappyx/MultiboxMultiremote
+
+
 # ESPEASY_Plugin_ITHORadio
 Alternate version for the ESPEasy ITHO plugin (https://github.com/svollebregt/ESPEASY_Plugin_ITHO) working with a slightly modified version of the ITHORadio library from https://github.com/philipsen/IthoRadio. This library is originally based on the library from: https://github.com/supersjimmie/IthoEcoFanRFT/tree/master/Master/Itho made by 'supersjimmie' and 'klusjesman'.
 
 A CC1101 868Mhz transmitter is needed. The 433Mhz version also seems to work (range may be limited).
 
 For more info see: https://gathering.tweakers.net/forum/list_messages/1690945
-
-
-# This is a proof of concept and not a final version yet. It is not stable yet and requires some manual configuration. Use at your own risk
 
 ## Temporary configuration items
 
