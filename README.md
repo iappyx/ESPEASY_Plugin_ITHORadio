@@ -1,4 +1,4 @@
-# This was a proof of concept and not a final version yet. It is not stable yet and requires some manual configuration. It will not be maintained. See: https://github.com/iappyx/MultiboxMultiremote
+# This was a proof of concept and not a final version. It is not stable and requires some manual configuration. It will not be maintained. See: https://github.com/iappyx/MultiboxMultiremote
 
 
 # ESPEASY_Plugin_ITHORadio
